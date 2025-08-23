@@ -1,0 +1,4 @@
+.vscode
+.env
+.dart_tool
+*.exe
