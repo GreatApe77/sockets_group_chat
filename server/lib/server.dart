@@ -24,7 +24,7 @@ Future<void> init({required String ip, required int port}) async {
           clientSocket.write(
             buildWelcomeMessage(
               amountOfConnectedChatMembers: clients.length,
-              usernames: clients.map((client) => client.username,).toList(),
+              usernames: clients.map((client) => client.username).toList(),
               groupChatTitle: groupChatName,
               enteringUsername: connectingClient.username,
             ),
