@@ -1,26 +1,25 @@
-// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 import 'dart:io';
 
 List<Client> clients = [];
 
-const groupChatName = "CHAT DA GALERA!";
+const groupChatName = 'GRUPO IRADO';
 Future<void> init({required String ip, required int port}) async {
   final socketServer = await ServerSocket.bind(InternetAddress(ip), port);
-  print('Server listening on: ${socketServer.address.address}:${socketServer.port}');
+  print('Servidor aguardando conexões em: ${socketServer.address.address}:${socketServer.port}');
 
   socketServer.listen((clientSocket) async {
-    print('new connection with IP: ${clientSocket.address.address} from remote port ${clientSocket.remotePort}');
-    clientSocket.write('Welcome to $groupChatName! Please enter your username to proceed: ');
-    //print(clients);
+    print('Nova conexão. IP: ${clientSocket.address.address} oriunda de porta remota: ${clientSocket.remotePort}');
+    clientSocket.write('Bem vindo ao $groupChatName! Digite como quer ser chamado no bate-papo:');
+
     clientSocket.listen(
       (rawData) {
         final decodedData = utf8.decode(rawData);
         if (!isSocketAlreadyClient(clientSocket)) {
           final connectingClient = Client(socket: clientSocket, username: decodedData);
-          //if (clients.we(element)) clients.add(client);
+
           clients.add(connectingClient);
-          print('${connectingClient.username} Joined the chat!');
+          print('${connectingClient.username} Entrou no servidor!');
           clientSocket.write(
             buildWelcomeMessage(
               amountOfConnectedChatMembers: clients.length,
@@ -29,6 +28,10 @@ Future<void> init({required String ip, required int port}) async {
               enteringUsername: connectingClient.username,
             ),
           );
+          broadcastMessage(
+            agent: clientSocket,
+            message: '${getClientFromSocket(clientSocket).username} Entrou no chat!',
+          );
         } else {
           final currentClient = getClientFromSocket(clientSocket);
           final message = ChatMessage(
@@ -36,48 +39,19 @@ Future<void> init({required String ip, required int port}) async {
             fromIp: currentClient.socket.address.address,
             content: decodedData,
           );
-          for (var client in clients) {
-            if (currentClient.socket != client.socket) {
-              client.socket.write(message.toString());
-            }
-          }
+          broadcastMessage(agent: currentClient.socket, message: message.toString());
         }
       },
-
       onDone: () {
-        print('Client Socket with IP: ${clientSocket.address.address} ended the connection!');
-        clients.removeWhere((element) => element.socket == clientSocket);
+        print('Cliente de IP: ${clientSocket.address.address} encerrou a conexão!');
+        if (isSocketAlreadyClient(clientSocket)) {
+          broadcastMessage(agent: clientSocket, message: '${getClientFromSocket(clientSocket).username} Left the chat');
+          clients.removeWhere((element) => element.socket == clientSocket);
+        }
       },
       cancelOnError: true,
     );
   });
-  /* socketServer.listen(
-    (clientSocket) async {
-      print('Client connected!!');
-      print('Address: ${clientSocket.address.address}');
-      print('Remote Address: ${clientSocket.remoteAddress.address}');
-      print('Port: ${clientSocket.port}');
-      print('Remote Port: ${clientSocket.remotePort}');
-      clientSocket.write('Bem vindo!');
-      clientSocket.listen(
-        (event) {
-          clientSocket.write('Sua mensagem chegou! voce disse : ${utf8.decode(event).toUpperCase()}');
-        },
-        onDone: () {
-          print("ONDONE");
-        },
-        onError: (err) {
-          print("ONERROR");
-        },
-      );
-    },
-    onDone: () {
-      print('Connection closed!!');
-    },
-    onError: (err) {
-      print('Unknown error!!');
-    },
-  ); */
 }
 
 class ChatMessage {
@@ -88,7 +62,7 @@ class ChatMessage {
 
   @override
   String toString() {
-    return '$username at $fromIp says: $content';
+    return '$username em $fromIp disse: $content';
   }
 }
 
@@ -129,10 +103,18 @@ String buildWelcomeMessage({
 }) {
   return '''
   ${'=' * 20}
-  Hello, $enteringUsername!
-  WELCOME TO $groupChatTitle group chat!  
-  There are ${usernames.length} members connected!
-  Members: ${usernames.toString()}
+  Olá, $enteringUsername!
+  Bem vindo ao $groupChatTitle!  
+  Esse bate-papo possui ${usernames.length} membros connectados!
+  membros: ${usernames.toString()}
   ${'=' * 20}
 ''';
+}
+
+void broadcastMessage({required Socket agent, required Object message}) {
+  for (var client in clients) {
+    if (agent != client.socket) {
+      client.socket.write(message);
+    }
+  }
 }
