@@ -17,7 +17,13 @@ Future<void> init({required String ip, required int port}) async {
         final decodedData = utf8.decode(rawData);
         if (!isSocketAlreadyClient(clientSocket)) {
           final connectingClient = Client(socket: clientSocket, username: decodedData);
-
+          final idx = clients.indexWhere((element) => element.username == connectingClient.username);
+          if (idx != -1) {
+            clientSocket.write(
+              'O nome de usuário ${connectingClient.username} já está sendo utilizado. Escolha outro e envie novamente!',
+            );
+            return;
+          }
           clients.add(connectingClient);
           print('${connectingClient.username} Entrou no servidor!');
           clientSocket.write(
